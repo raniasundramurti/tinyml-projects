@@ -3,7 +3,7 @@
 #include <Arduino_APDS9960.h>
 
 // thresholds
-#define HUMIDITY_JUMP_THRESHOLD    60
+#define HUMIDITY_JUMP_THRESHOLD    20
 #define TEMP_RISE_THRESHOLD        0.5
 #define MAG_SHIFT_THRESHOLD        100
 #define LIGHT_CHANGE_THRESHOLD     150
@@ -13,6 +13,9 @@ float baselineHumidity = -1;
 float baselineTemp = -1;
 float baselineMag = -1;
 int baselineClear = -1;
+
+unsigned long lastEventTime = 0;
+#define COOLDOWN_MS 3000
 
 void setup() {
   Serial.begin(115200);
@@ -98,13 +101,19 @@ void loop() {
 
   // classifying situations
   String label = "BASELINE_NORMAL";
+  unsigned long now = millis();
 
-  if (humidJump || tempRise) {
-    label = "BREATH_OR_WARM_AIR_EVENT";
-  } else if (magShift) {
-    label = "MAGNETIC_DISTURBANCE_EVENT";
-  } else if (lightColorChange) {
-    label = "LIGHT_OR_COLOR_CHANGE_EVENT";
+  if (now - lastEventTime > COOLDOWN_MS) {
+    if (humidJump || tempRise) {
+      label = "BREATH_OR_WARM_AIR_EVENT";
+      lastEventTime = now;
+    } else if (magShift) {
+      label = "MAGNETIC_DISTURBANCE_EVENT";
+      lastEventTime = now;
+    } else if (lightColorChange) {
+      label = "LIGHT_OR_COLOR_CHANGE_EVENT";
+      lastEventTime = now;
+    }
   }
 
   Serial.print("event,"); Serial.println(label);
